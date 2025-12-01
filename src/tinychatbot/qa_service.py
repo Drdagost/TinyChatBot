@@ -1,14 +1,5 @@
 from typing import Any, Dict, List, Tuple
 
-# tiktoken is optional at runtime; annotate as Any|None so mypy is happy when
-# it's not installed in some environments.
-tiktoken: Any | None = None
-try:
-    import tiktoken as _tiktoken
-
-    tiktoken = _tiktoken
-except Exception:
-    tiktoken = None
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -29,8 +20,23 @@ def read_documents(content_dir: str):
     return load_documents(content_dir)
 
 
+def _get_tiktoken() -> Any | None:
+    """Lazily import tiktoken and return the module or None if unavailable.
+
+    This avoids importing an optional heavy dependency at module import time
+    which can cause pre-commit ruff E402 (module-level executable code).
+    """
+    try:
+        import tiktoken as _tiktoken  # type: ignore
+
+        return _tiktoken
+    except Exception:
+        return None
+
+
 def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200):
     # Token-aware chunking using tiktoken when available; falls back to character-based.
+    tiktoken = _get_tiktoken()
     if tiktoken:
         model_name = getattr(Config, "LLM_MODEL", "gpt-4o-mini")
         enc = (
@@ -39,7 +45,7 @@ def chunk_text(text: str, chunk_size: int = 1000, overlap: int = 200):
             else tiktoken.get_encoding("cl100k_base")
         )
         toks = enc.encode(text)
-        chunks = []
+        chunks: List[str] = []
         i = 0
         while i < len(toks):
             part = toks[i : i + chunk_size]
