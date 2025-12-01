@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from typing import Any, Optional, Type
 
 import gradio as gr
 import requests
@@ -145,13 +146,21 @@ class ContentAgent:
         # Allow injection of a pre-configured OpenAI client (useful for tests)
         # and lazily import the real OpenAI client class so importing this
         # module doesn't require the `openai` library to be installed.
-        self.openai = openai_client
+        self.openai: Optional[Any] = openai_client
 
+        # Prepare a local placeholder for the imported OpenAI class. We
+        # initialize it to None with an explicit Optional type so mypy won't
+        # complain when we assign the imported class or None below.
+        _OpenAIClass: Optional[Type[Any]] = None
         try:
-            from openai import OpenAI as _OpenAIClass  # type: ignore
+            from openai import OpenAI as _ImportedOpenAI  # type: ignore
+
+            _OpenAIClass = _ImportedOpenAI
         except Exception:
             _OpenAIClass = None
 
+        # Store the OpenAI class (or None if package not available) so we can
+        # instantiate it later when an API key is present.
         self._openai_class = _OpenAIClass
         # Ensure static type is `str` so mypy knows this is safe to pass to os.path.isdir
         self.content_dir: str = str(content_dir or os.getenv("CONTENT_DIR", "content"))
