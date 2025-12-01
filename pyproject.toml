@@ -1,0 +1,23 @@
+[project]
+name = "tinychatbot"
+version = "0.1.0"
+description = "Tiny Chat Bot"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+faiss = ["faiss-cpu"]
+pinecone = ["pinecone-client"]
+chroma = ["chromadb"]
+server = ["fastapi", "uvicorn[standard]", "numpy"]
+
+[project.scripts]
+app = "tinychatbot.app:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = { find = { where = ["src"] } }

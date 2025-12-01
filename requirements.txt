@@ -1,0 +1,19 @@
+python-dotenv
+openai
+pypdf
+gradio
+requests
+fastapi
+uvicorn[standard]
+numpy
+python-docx
+pytesseract
+Pillow
+pdf2image
+loguru
+ tiktoken
+
+# Optional / provider-specific (uncomment to install)
+# faiss-cpu
+# pinecone-client
+# chromadb

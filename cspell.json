@@ -1,0 +1,21 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [],
+  "ignorePaths": [
+    "**/.venv/**",
+    "**/.env",
+    "**/.env.*",
+  "**/data/**",
+  "**/*.toml",
+  "**/requirements.txt",
+    "**/uv.lock",
+    "**/node_modules/**",
+    "**/*.pyc",
+    "**/__pycache__/**",
+    "**/*.log"
+  ],
+  "ignoreRegExpList": [
+    "^\\s*#.*$"
+  ]
+}

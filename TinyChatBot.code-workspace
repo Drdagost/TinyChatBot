@@ -1,0 +1,39 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"cSpell.words": [
+			"DEEPSEEK",
+			"descr",
+			"docpr",
+			"dotenv",
+			"embs",
+			"FAISS",
+			"HUGGINGFACE",
+			"idxs",
+			"linalg",
+			"localname",
+			"loguru",
+			"metadatas",
+			"multipage",
+			"ollama",
+			"OPENROUTER",
+			"pdftoppm",
+			"Poppler",
+			"pycache",
+			"pyproject",
+			"pytest",
+			"Tesseract",
+			"tinychatbot",
+			"toks",
+			"upserts",
+			"uvenv",
+			"uvicorn",
+			"venv",
+			"VSTORE"
+		]
+	}
+}

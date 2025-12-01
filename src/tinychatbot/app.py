@@ -1,0 +1,220 @@
+from dotenv import load_dotenv
+import json
+import os
+import sys
+import requests
+from loguru import logger
+import gradio as gr
+
+from . import qa_service as qs
+from .documents import load_documents
+
+
+load_dotenv(override=True)
+
+
+def record_unknown_question(question):
+    """Lightweight recorder for questions outside the provided content scope.
+    This prints to stdout and optionally uses Pushover if PUSHOVER_* env vars are set.
+    """
+    print(f"[record_unknown_question] {question}", flush=True)
+    logger.info(f"[record_unknown_question] {question}")
+    if os.getenv("PUSHOVER_TOKEN") and os.getenv("PUSHOVER_USER"):
+        try:
+            requests.post(
+                "https://api.pushover.net/1/messages.json",
+                data={
+                    "token": os.getenv("PUSHOVER_TOKEN"),
+                    "user": os.getenv("PUSHOVER_USER"),
+                    "message": f"Unknown question: {question}",
+                },
+                timeout=5,
+            )
+        except Exception:
+            pass
+    return {"recorded": "ok"}
+
+
+record_unknown_question_json = {
+    "name": "record_unknown_question",
+    "description": "Record a question that couldn't be answered from the available documents",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "question": {
+                "type": "string",
+                "description": "The question that couldn't be answered"
+            },
+        },
+        "required": ["question"],
+        "additionalProperties": False
+    }
+}
+
+tools = [{"type": "function", "function": record_unknown_question_json}]
+
+
+class ContentAgent:
+    """Reads a folder of documents and answers questions as a subject-matter expert on that content.
+
+    Behavior:
+    - Loads text from PDFs and text/markdown files under CONTENT_DIR (env) or 'content' by default.
+    - Requires the content directory to exist.
+    - System prompt instructs the model to act as an SME.
+    """
+
+    def __init__(self, content_dir: str | None = None):
+        # Load environment variables early
+        from dotenv import load_dotenv
+        load_dotenv(override=True)
+        
+        # Get provider settings
+        llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
+        vector_provider = os.getenv("VECTOR_PROVIDER", os.getenv("VECTOR_DB", "faiss")).lower()
+        
+        # Check required keys based on LLM provider
+        if llm_provider == "openai":
+            if not os.getenv("OPENAI_API_KEY"):
+                print("Error: OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "azure":
+            if not os.getenv("OPENAI_API_KEY") or not os.getenv("AZURE_OPENAI_DEPLOYMENT"):
+                print("Error: OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "huggingface":
+            if not os.getenv("HUGGINGFACE_API_KEY"):
+                print("Error: HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "openrouter":
+            if not os.getenv("OPENROUTER_API_KEY"):
+                print("Error: OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "anthropic":
+            if not os.getenv("ANTHROPIC_API_KEY"):
+                print("Error: ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "google":
+            if not os.getenv("GOOGLE_API_KEY"):
+                print("Error: GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "deepseek":
+            if not os.getenv("DEEPSEEK_API_KEY"):
+                print("Error: DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file.")
+                sys.exit(1)
+        elif llm_provider == "ollama":
+            pass  # no key needed
+        
+        # Check required keys based on vector provider
+        if vector_provider == "pinecone":
+            if not os.getenv("PINECONE_API_KEY") or not os.getenv("PINECONE_ENV"):
+                print("Error: PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file.")
+                sys.exit(1)
+        # For faiss, chroma, memory, no additional keys needed
+        
+        # Import OpenAI client lazily so package import doesn't require API libs
+        from openai import OpenAI
+        self.openai = OpenAI()
+        self.content_dir = content_dir or os.getenv("CONTENT_DIR", "content")
+        if not os.path.isdir(self.content_dir):
+            # Do not fall back to legacy 'me' folder — require an explicit content directory.
+            raise FileNotFoundError(f"Content directory '{self.content_dir}' not found.")
+
+        self.docs = self._load_documents(self.content_dir)
+
+    def _load_documents(self, folder_path: str) -> dict:
+        """Walk the folder and extract text from known file types. Returns a dict[path] = text."""
+        docs = load_documents(folder_path)
+        if not docs:
+            logger.warning(f"No readable documents found under '{folder_path}'")
+        return {d["path"]: d["text"] for d in docs}
+
+    def handle_tool_call(self, tool_calls):
+        results = []
+        for tool_call in tool_calls:
+            tool_name = tool_call.function.name
+            arguments = json.loads(tool_call.function.arguments)
+            logger.info(f"Tool called: {tool_name}")
+            tool = globals().get(tool_name)
+            result = tool(**arguments) if tool else {}
+            results.append({"role": "tool", "content": json.dumps(result), "tool_call_id": tool_call.id})
+        return results
+
+    def system_prompt(self) -> str:
+        """Build a system prompt that instructs the model to act as an SME using only the provided documents."""
+        prompt_lines = [
+            "You are a helpful, accurate subject-matter expert. Answer user questions using ONLY the information contained in the provided documents.",
+            "Do not impersonate any person. If the answer is not contained in the documents, say you don't know and offer to record the question.",
+            "Be concise, factual, and cite which document (filename) you used when giving facts if appropriate.",
+            "The documents available are listed below (filename followed by an excerpt):",
+            "",
+        ]
+
+        for path, text in self.docs.items():
+            # increase preview window so multi-page documents are more likely to be included
+            safe_preview = text[:5000].replace('\n', ' ')
+            prompt_lines.append(f"--- {os.path.relpath(path, self.content_dir)} ---")
+            prompt_lines.append(safe_preview)
+            prompt_lines.append("")
+
+        return "\n".join(prompt_lines)
+
+    def chat(self, message, history):
+        messages = [{"role": "system", "content": self.system_prompt()}] + history + [{"role": "user", "content": message}]
+        done = False
+        while not done:
+            from .config import Config
+            response = self.openai.chat.completions.create(model=Config.LLM_MODEL, messages=messages, tools=tools)
+            if response.choices[0].finish_reason == "tool_calls":
+                message = response.choices[0].message
+                tool_calls = message.tool_calls
+                results = self.handle_tool_call(tool_calls)
+                messages.append(message)
+                messages.extend(results)
+            else:
+                done = True
+
+        return response.choices[0].message.content
+
+
+def chat_with_citations(agent: ContentAgent, message: str, history: list):
+    """Wrapper used by the UI: get the agent's textual reply and then augment it with
+    structured source metadata from the QA service so the UI can render page/paragraph citations.
+    """
+    # Get plain text answer from the agent
+    answer = agent.chat(message, history)
+
+    # Use the qa_service path to get structured sources for the same question
+    try:
+        req = qs.QARequest(question=message, top_k=5)
+        qa_resp = qs.qa(req)
+        sources = qa_resp.get('sources', [])
+    except Exception:
+        sources = []
+
+    if sources:
+        # Format citations: show filename plus page/para when available
+        citation_lines = ["\n\nCitations:"]
+        for s in sources:
+            src = s.get('source', 'unknown')
+            parts = [os.path.relpath(src, agent.content_dir) if agent.content_dir and src.startswith(agent.content_dir) else src]
+            if 'page' in s:
+                parts.append(f"page:{s['page']}")
+            if 'para' in s:
+                parts.append(f"para:{s['para']}")
+            citation_lines.append(" - " + ", ".join(parts))
+        answer = answer + "\n" + "\n".join(citation_lines)
+
+    return answer
+
+
+def main():
+    """Entrypoint for running the app. This allows tools like `uv run app` to import
+    the `app` module and call `main()`.
+    """
+    agent = ContentAgent()
+    # Use wrapper so UI shows page/paragraph citations when available
+    gr.ChatInterface(lambda msg, hist: chat_with_citations(agent, msg, hist)).launch()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local environment files
+.env
+.env.local
+
+# Data / indexes
+data/
+chroma_db/
+
+# uv lockfile
+uv.lock
+uv.lock.json
+
+# IDE / editors
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Rollup
+.zip
