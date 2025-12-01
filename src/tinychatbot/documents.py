@@ -32,7 +32,9 @@ def load_documents(content_dir: Optional[str] = None) -> List[Dict[str, Any]]:
             skipped += 1
 
     if skipped:
-        logger.warning(f"Skipped {skipped} documents that produced no readable text in '{base}'.")
+        logger.warning(
+            f"Skipped {skipped} documents that produced no readable text in '{base}'."
+        )
     if not filtered:
         logger.warning(f"No readable documents found under '{base}'.")
 

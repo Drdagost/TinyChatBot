@@ -44,12 +44,12 @@ record_unknown_question_json = {
         "properties": {
             "question": {
                 "type": "string",
-                "description": "The question that couldn't be answered"
+                "description": "The question that couldn't be answered",
             },
         },
         "required": ["question"],
-        "additionalProperties": False
-    }
+        "additionalProperties": False,
+    },
 }
 
 tools = [{"type": "function", "function": record_unknown_question_json}]
@@ -64,64 +64,93 @@ class ContentAgent:
     - System prompt instructs the model to act as an SME.
     """
 
-    def __init__(self, content_dir: str | None = None, persona_store: dict[str, Persona] | None = None, default_persona_id: str = "default"):
+    def __init__(
+        self,
+        content_dir: str | None = None,
+        persona_store: dict[str, Persona] | None = None,
+        default_persona_id: str = "default",
+    ):
         # Load environment variables early
         from dotenv import load_dotenv
+
         load_dotenv(override=True)
-        
+
         # Get provider settings
         llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
-        vector_provider = os.getenv("VECTOR_PROVIDER", os.getenv("VECTOR_DB", "faiss")).lower()
-        
+        vector_provider = os.getenv(
+            "VECTOR_PROVIDER", os.getenv("VECTOR_DB", "faiss")
+        ).lower()
+
         # Check required keys based on LLM provider
         if llm_provider == "openai":
             if not os.getenv("OPENAI_API_KEY"):
-                print("Error: OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file.")
+                print(
+                    "Error: OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "azure":
-            if not os.getenv("OPENAI_API_KEY") or not os.getenv("AZURE_OPENAI_DEPLOYMENT"):
-                print("Error: OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file.")
+            if not os.getenv("OPENAI_API_KEY") or not os.getenv(
+                "AZURE_OPENAI_DEPLOYMENT"
+            ):
+                print(
+                    "Error: OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "huggingface":
             if not os.getenv("HUGGINGFACE_API_KEY"):
-                print("Error: HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file.")
+                print(
+                    "Error: HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "openrouter":
             if not os.getenv("OPENROUTER_API_KEY"):
-                print("Error: OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file.")
+                print(
+                    "Error: OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "anthropic":
             if not os.getenv("ANTHROPIC_API_KEY"):
-                print("Error: ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file.")
+                print(
+                    "Error: ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "google":
             if not os.getenv("GOOGLE_API_KEY"):
-                print("Error: GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file.")
+                print(
+                    "Error: GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "deepseek":
             if not os.getenv("DEEPSEEK_API_KEY"):
-                print("Error: DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file.")
+                print(
+                    "Error: DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file."
+                )
                 sys.exit(1)
         elif llm_provider == "ollama":
             pass  # no key needed
-        
+
         # Check required keys based on vector provider
         if vector_provider == "pinecone":
             if not os.getenv("PINECONE_API_KEY") or not os.getenv("PINECONE_ENV"):
-                print("Error: PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file.")
+                print(
+                    "Error: PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file."
+                )
                 sys.exit(1)
         # For faiss, chroma, memory, no additional keys needed
-        
+
         self.persona_store = persona_store or {}
         self.persona_id = default_persona_id
-        
+
         # Import OpenAI client lazily so package import doesn't require API libs
         from openai import OpenAI
+
         self.openai = OpenAI()
         self.content_dir = content_dir or os.getenv("CONTENT_DIR", "content")
         if not os.path.isdir(self.content_dir):
             # Do not fall back to legacy 'me' folder — require an explicit content directory.
-            raise FileNotFoundError(f"Content directory '{self.content_dir}' not found.")
+            raise FileNotFoundError(
+                f"Content directory '{self.content_dir}' not found."
+            )
 
         self.docs = self._load_documents(self.content_dir)
 
@@ -146,7 +175,13 @@ class ContentAgent:
             logger.info(f"Tool called: {tool_name}")
             tool = globals().get(tool_name)
             result = tool(**arguments) if tool else {}
-            results.append({"role": "tool", "content": json.dumps(result), "tool_call_id": tool_call.id})
+            results.append(
+                {
+                    "role": "tool",
+                    "content": json.dumps(result),
+                    "tool_call_id": tool_call.id,
+                }
+            )
         return results
 
     def system_prompt(self) -> str:
@@ -161,7 +196,9 @@ class ContentAgent:
         # Guardrail: persona instructions should NOT override the SME constraints above.
         # This explicit line helps prevent persona authors from accidentally weakening
         # the requirement to answer only from provided documents.
-        prompt_lines.append("IMPORTANT: Persona instructions only affect tone and style. They must NOT change your requirement to answer ONLY from the provided documents or to avoid guessing.")
+        prompt_lines.append(
+            "IMPORTANT: Persona instructions only affect tone and style. They must NOT change your requirement to answer ONLY from the provided documents or to avoid guessing."
+        )
         prompt_lines.append("")
 
         # Add persona instructions (style/tone)
@@ -171,12 +208,14 @@ class ContentAgent:
             prompt_lines.append(persona.system_prompt)
             prompt_lines.append("")
 
-        prompt_lines.append("The documents available are listed below (filename followed by an excerpt):")
+        prompt_lines.append(
+            "The documents available are listed below (filename followed by an excerpt):"
+        )
         prompt_lines.append("")
 
         for path, text in self.docs.items():
             # increase preview window so multi-page documents are more likely to be included
-            safe_preview = text[:5000].replace('\n', ' ')
+            safe_preview = text[:5000].replace("\n", " ")
             prompt_lines.append(f"--- {os.path.relpath(path, self.content_dir)} ---")
             prompt_lines.append(safe_preview)
             prompt_lines.append("")
@@ -184,11 +223,18 @@ class ContentAgent:
         return "\n".join(prompt_lines)
 
     def chat(self, message, history):
-        messages = [{"role": "system", "content": self.system_prompt()}] + history + [{"role": "user", "content": message}]
+        messages = (
+            [{"role": "system", "content": self.system_prompt()}]
+            + history
+            + [{"role": "user", "content": message}]
+        )
         done = False
         while not done:
             from .config import Config
-            response = self.openai.chat.completions.create(model=Config.LLM_MODEL, messages=messages, tools=tools)
+
+            response = self.openai.chat.completions.create(
+                model=Config.LLM_MODEL, messages=messages, tools=tools
+            )
             if response.choices[0].finish_reason == "tool_calls":
                 message = response.choices[0].message
                 tool_calls = message.tool_calls
@@ -212,7 +258,7 @@ def chat_with_citations(agent: ContentAgent, message: str, history: list):
     try:
         req = qs.QARequest(question=message, top_k=5)
         qa_resp = qs.qa(req)
-        sources = qa_resp.get('sources', [])
+        sources = qa_resp.get("sources", [])
     except Exception:
         sources = []
 
@@ -220,11 +266,15 @@ def chat_with_citations(agent: ContentAgent, message: str, history: list):
         # Format citations: show filename plus page/para when available
         citation_lines = ["\n\nCitations:"]
         for s in sources:
-            src = s.get('source', 'unknown')
-            parts = [os.path.relpath(src, agent.content_dir) if agent.content_dir and src.startswith(agent.content_dir) else src]
-            if 'page' in s:
+            src = s.get("source", "unknown")
+            parts = [
+                os.path.relpath(src, agent.content_dir)
+                if agent.content_dir and src.startswith(agent.content_dir)
+                else src
+            ]
+            if "page" in s:
                 parts.append(f"page:{s['page']}")
-            if 'para' in s:
+            if "para" in s:
                 parts.append(f"para:{s['para']}")
             citation_lines.append(" - " + ", ".join(parts))
         answer = answer + "\n" + "\n".join(citation_lines)
@@ -237,17 +287,23 @@ def main():
     the `app` module and call `main()`.
     """
     from .config import Config
+
     persona_store = load_personas(Config.PERSONAS_DIR)
     default_persona_id = Config.DEFAULT_PERSONA_ID
-    agent = ContentAgent(content_dir=Config.CONTENT_DIR, persona_store=persona_store, default_persona_id=default_persona_id)
-    
+    agent = ContentAgent(
+        content_dir=Config.CONTENT_DIR,
+        persona_store=persona_store,
+        default_persona_id=default_persona_id,
+    )
+
     # Persona options for dropdown (show friendly labels, return persona id via mapping)
     # persona_label_map: id -> "DisplayName emoji"
-    persona_label_map = {p.id: f"{p.display_name} {p.emoji}" for p in persona_store.values()}
+    persona_label_map = {
+        p.id: f"{p.display_name} {p.emoji}" for p in persona_store.values()
+    }
     # reverse map: label -> id (used when dropdown returns the label)
     label_to_id = {label: pid for pid, label in persona_label_map.items()}
     persona_label_choices = list(label_to_id.keys())
-
 
     # Log loaded personas for operator visibility
     if persona_label_map:
@@ -256,7 +312,9 @@ def main():
         for pid, label in persona_label_map.items():
             print(f" - {pid}: {label}")
     else:
-        logger.warning("No personas found in PERSONAS_DIR; running without persona styles.")
+        logger.warning(
+            "No personas found in PERSONAS_DIR; running without persona styles."
+        )
 
     def chat_with_persona(msg, hist, persona_label):
         # Dropdown returns a label like "DisplayName emoji"; map it to the persona id.
@@ -264,7 +322,9 @@ def main():
         try:
             agent.set_persona(persona_id)
         except Exception:
-            print(f"Requested persona '{persona_id}' not available; falling back to '{default_persona_id}'")
+            print(
+                f"Requested persona '{persona_id}' not available; falling back to '{default_persona_id}'"
+            )
             try:
                 agent.set_persona(default_persona_id)
             except Exception:
@@ -276,7 +336,11 @@ def main():
     default_label = persona_label_map.get(default_persona_id, None)
     gr.ChatInterface(
         fn=chat_with_persona,
-        additional_inputs=[gr.Dropdown(choices=persona_label_choices, label="Persona", value=default_label)]
+        additional_inputs=[
+            gr.Dropdown(
+                choices=persona_label_choices, label="Persona", value=default_label
+            )
+        ],
     ).launch()
 
 

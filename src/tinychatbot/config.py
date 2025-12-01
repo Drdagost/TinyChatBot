@@ -11,10 +11,15 @@ class Config:
     """
 
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
-    VECTOR_PROVIDER = os.getenv("VECTOR_PROVIDER", os.getenv("VECTOR_DB", "faiss")).lower()
+    VECTOR_PROVIDER = os.getenv(
+        "VECTOR_PROVIDER", os.getenv("VECTOR_DB", "faiss")
+    ).lower()
 
     # Provider-specific keys
-    OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "http://localhost:11434/v1" if LLM_PROVIDER == "ollama" else None)
+    OPENAI_API_BASE = os.getenv(
+        "OPENAI_API_BASE",
+        "http://localhost:11434/v1" if LLM_PROVIDER == "ollama" else None,
+    )
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     PINECONE_ENV = os.getenv("PINECONE_ENV")
@@ -31,4 +36,3 @@ class Config:
 
     PERSONAS_DIR = os.getenv("PERSONAS_DIR", "src/tinychatbot/personas")
     DEFAULT_PERSONA_ID = os.getenv("DEFAULT_PERSONA_ID", "default")
-

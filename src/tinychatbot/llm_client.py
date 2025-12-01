@@ -27,7 +27,9 @@ class LLMClient:
     def embed(self, texts: List[str], **kwargs) -> List[List[float]]:
         if self.provider == "openai":
             from .config import Config
-            resp = self.client.embeddings.create(input=texts, model=kwargs.get("model", Config.EMBEDDING_MODEL))
+
+            resp = self.client.embeddings.create(
+                input=texts, model=kwargs.get("model", Config.EMBEDDING_MODEL)
+            )
             return [d.embedding for d in resp.data]
         raise NotImplementedError()
-
