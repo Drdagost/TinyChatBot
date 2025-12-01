@@ -69,6 +69,7 @@ class ContentAgent:
         content_dir: str | None = None,
         persona_store: dict[str, Persona] | None = None,
         default_persona_id: str = "default",
+        openai_client: object | None = None,
     ):
         # Load environment variables early
         from dotenv import load_dotenv
@@ -141,10 +142,17 @@ class ContentAgent:
         self.persona_store: dict[str, Persona] = persona_store or {}
         self.persona_id: str = default_persona_id
 
-        # Import OpenAI client lazily so package import doesn't require API libs
-        from openai import OpenAI
+        # Allow injection of a pre-configured OpenAI client (useful for tests)
+        # and lazily import the real OpenAI client class so importing this
+        # module doesn't require the `openai` library to be installed.
+        self.openai = openai_client
 
-        self.openai = OpenAI()
+        try:
+            from openai import OpenAI as _OpenAIClass  # type: ignore
+        except Exception:
+            _OpenAIClass = None
+
+        self._openai_class = _OpenAIClass
         # Ensure static type is `str` so mypy knows this is safe to pass to os.path.isdir
         self.content_dir: str = str(content_dir or os.getenv("CONTENT_DIR", "content"))
         if not os.path.isdir(self.content_dir):
@@ -229,6 +237,18 @@ class ContentAgent:
             + history
             + [{"role": "user", "content": message}]
         )
+        # Ensure an OpenAI client is available if the selected LLM provider needs it.
+        if self.openai is None:
+            llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
+            if llm_provider == "openai":
+                if not os.getenv("OPENAI_API_KEY"):
+                    raise RuntimeError(
+                        "OPENAI_API_KEY is required for LLM_PROVIDER=openai"
+                    )
+                if not getattr(self, "_openai_class", None):
+                    raise RuntimeError("openai package is not installed")
+                # pass the api_key explicitly to avoid the library reading env in unexpected ways
+                self.openai = self._openai_class(api_key=os.getenv("OPENAI_API_KEY"))
         done = False
         while not done:
             from .config import Config
