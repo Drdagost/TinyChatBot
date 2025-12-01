@@ -1,15 +1,15 @@
-from dotenv import load_dotenv
 import json
 import os
 import sys
-import requests
-from loguru import logger
+
 import gradio as gr
+import requests
+from dotenv import load_dotenv
+from loguru import logger
 
 from . import qa_service as qs
 from .documents import load_documents
-from .personas import load_personas, Persona
-
+from .personas import Persona, load_personas
 
 load_dotenv(override=True)
 

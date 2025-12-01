@@ -1,6 +1,5 @@
 from types import SimpleNamespace
 
-
 from tinychatbot import qa_service as qs
 
 

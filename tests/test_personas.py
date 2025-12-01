@@ -1,4 +1,4 @@
-from tinychatbot.personas import parse_persona, load_personas
+from tinychatbot.personas import load_personas, parse_persona
 
 
 def make_md(meta: str, system_prompt: str, style: str = "") -> str:

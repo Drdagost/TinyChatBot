@@ -9,8 +9,8 @@ from pydantic import BaseModel
 
 from .config import Config
 from .documents import load_documents
-from .vector_store import VectorStore
 from .llm_client import LLMClient
+from .vector_store import VectorStore
 
 app = FastAPI(title="Content QA")
 

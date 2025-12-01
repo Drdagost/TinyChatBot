@@ -1,4 +1,5 @@
 import pytest
+
 from tinychatbot.app import ContentAgent
 from tinychatbot.personas import Persona
 

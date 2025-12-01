@@ -1,7 +1,8 @@
-import shutil
 import os
+import shutil
+from typing import Callable, Dict, List, Optional
+
 from loguru import logger
-from typing import Callable, Dict, Optional, List
 
 
 def check_native_binaries() -> Dict[str, bool]:
@@ -205,8 +206,8 @@ class DocumentExtractor:
 
         # Try OCR path
         try:
-            from pdf2image import convert_from_path
             import pytesseract
+            from pdf2image import convert_from_path
 
             images = convert_from_path(path)
             texts = []

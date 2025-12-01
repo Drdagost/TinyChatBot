@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
-from tinychatbot.personas import Persona
+
 from tinychatbot.app import ContentAgent
+from tinychatbot.personas import Persona
 
 
 def make_response(content="ok"):
