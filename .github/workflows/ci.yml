@@ -67,7 +67,8 @@ jobs:
           pytest --cov=src --cov-report=xml -q
 
       - name: Upload coverage report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-xml-${{ github.run_id }}
+          name: coverage-xml-${{ github.run_id }}-${{ matrix.python-version }}
           path: coverage.xml
