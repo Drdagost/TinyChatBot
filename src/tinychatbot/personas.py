@@ -61,7 +61,7 @@ def parse_persona(content: str, source_filename: str | None = None) -> Persona |
     style_text = '\n'.join(sections.get('style', [])).strip()
 
     # Parse meta (allow ':' or '=')
-    meta_lines = [l for l in meta_text.split('\n') if l.strip()]
+    meta_lines = [line for line in meta_text.split('\n') if line.strip()]
     meta_dict: Dict[str, str] = {}
     for line in meta_lines:
         m = re.match(r"^\s*([^:=]+)\s*[:=]\s*(.*)$", line)
@@ -85,7 +85,7 @@ def parse_persona(content: str, source_filename: str | None = None) -> Persona |
                 style = parsed
         except Exception:
             # Fallback: simple key:value lines
-            style_lines = [l for l in style_text.split('\n') if l.strip()]
+            style_lines = [line for line in style_text.split('\n') if line.strip()]
             for line in style_lines:
                 m = re.match(r"^\s*([^:]+):\s*(.*)$", line)
                 if m:

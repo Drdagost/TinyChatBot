@@ -19,6 +19,7 @@
 			"loguru",
 			"metadatas",
 			"multipage",
+			"mypy",
 			"ollama",
 			"OPENROUTER",
 			"pdftoppm",
