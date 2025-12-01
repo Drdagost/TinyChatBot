@@ -1,7 +1,12 @@
 from typing import Any, Dict, List, Tuple
 
+# tiktoken is optional at runtime; annotate as Any|None so mypy is happy when
+# it's not installed in some environments.
+tiktoken: Any | None = None
 try:
-    import tiktoken
+    import tiktoken as _tiktoken
+
+    tiktoken = _tiktoken
 except Exception:
     tiktoken = None
 from fastapi import FastAPI

@@ -23,7 +23,7 @@ class PersonaSummary:
 
 
 def load_personas(personas_dir: str | Path) -> Dict[str, Persona]:
-    personas = {}
+    personas: Dict[str, Persona] = {}
     personas_path = Path(personas_dir)
     if not personas_path.is_dir():
         return personas
@@ -52,9 +52,9 @@ def parse_persona(content: str, source_filename: str | None = None) -> Persona |
     The `style` section is parsed with `yaml.safe_load` when available, otherwise
     it falls back to a simple `key: value` parser.
     """
-    sections = {}
-    current_section = None
-    lines = content.split("\n")
+    sections: Dict[str, List[str]] = {}
+    current_section: str | None = None
+    lines: List[str] = content.split("\n")
     for line in lines:
         stripped = line.strip()
         if stripped.startswith("[") and stripped.endswith("]"):
@@ -68,7 +68,7 @@ def parse_persona(content: str, source_filename: str | None = None) -> Persona |
     style_text = "\n".join(sections.get("style", [])).strip()
 
     # Parse meta (allow ':' or '=')
-    meta_lines = [line for line in meta_text.split("\n") if line.strip()]
+    meta_lines: List[str] = [line for line in meta_text.split("\n") if line.strip()]
     meta_dict: Dict[str, str] = {}
     for line in meta_lines:
         m = re.match(r"^\s*([^:=]+)\s*[:=]\s*(.*)$", line)

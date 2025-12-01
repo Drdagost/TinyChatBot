@@ -206,8 +206,8 @@ class DocumentExtractor:
 
         # Try OCR path
         try:
-            import pytesseract
-            from pdf2image import convert_from_path
+            import pytesseract  # type: ignore
+            from pdf2image import convert_from_path  # type: ignore
 
             images = convert_from_path(path)
             texts = []

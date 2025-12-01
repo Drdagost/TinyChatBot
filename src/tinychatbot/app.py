@@ -138,14 +138,15 @@ class ContentAgent:
                 sys.exit(1)
         # For faiss, chroma, memory, no additional keys needed
 
-        self.persona_store = persona_store or {}
-        self.persona_id = default_persona_id
+        self.persona_store: dict[str, Persona] = persona_store or {}
+        self.persona_id: str = default_persona_id
 
         # Import OpenAI client lazily so package import doesn't require API libs
         from openai import OpenAI
 
         self.openai = OpenAI()
-        self.content_dir = content_dir or os.getenv("CONTENT_DIR", "content")
+        # Ensure static type is `str` so mypy knows this is safe to pass to os.path.isdir
+        self.content_dir: str = str(content_dir or os.getenv("CONTENT_DIR", "content"))
         if not os.path.isdir(self.content_dir):
             # Do not fall back to legacy 'me' folder — require an explicit content directory.
             raise FileNotFoundError(
