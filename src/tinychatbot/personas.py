@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Dict, List, Any
 from pathlib import Path
+import logging
+import re
 
 @dataclass
 class Persona:
@@ -26,51 +28,76 @@ def load_personas(personas_dir: str | Path) -> Dict[str, Persona]:
     for md_file in personas_path.glob("*.md"):
         try:
             content = md_file.read_text(encoding="utf-8")
-            persona = parse_persona(content)
+            # pass filename so parser can fall back to filename-derived id
+            persona = parse_persona(content, source_filename=md_file.stem)
             if persona:
-                personas[persona.id] = persona
+                if persona.id in personas:
+                    logging.warning(f"Duplicate persona id '{persona.id}' found in {md_file}; skipping.")
+                else:
+                    personas[persona.id] = persona
         except Exception as e:
-            print(f"Error loading persona {md_file}: {e}")
+            logging.exception(f"Error loading persona {md_file}: {e}")
     return personas
+def parse_persona(content: str, source_filename: str | None = None) -> Persona | None:
+    """Parse a persona markdown file into a Persona object.
 
-def parse_persona(content: str) -> Persona | None:
+    The parser accepts `key: value` and `key = value` styles in the meta section.
+    The `style` section is parsed with `yaml.safe_load` when available, otherwise
+    it falls back to a simple `key: value` parser.
+    """
     sections = {}
     current_section = None
     lines = content.split('\n')
     for line in lines:
-        if line.strip().startswith('[') and line.strip().endswith(']'):
-            current_section = line.strip()[1:-1]
+        stripped = line.strip()
+        if stripped.startswith('[') and stripped.endswith(']'):
+            current_section = stripped[1:-1].lower()
             sections[current_section] = []
         elif current_section:
             sections[current_section].append(line)
-    
-    meta = '\n'.join(sections.get('meta', [])).strip()
+
+    meta_text = '\n'.join(sections.get('meta', [])).strip()
     system_prompt = '\n'.join(sections.get('system_prompt', [])).strip()
     style_text = '\n'.join(sections.get('style', [])).strip()
-    
-    # Parse meta
-    meta_lines = meta.split('\n')
-    meta_dict = {}
+
+    # Parse meta (allow ':' or '=')
+    meta_lines = [l for l in meta_text.split('\n') if l.strip()]
+    meta_dict: Dict[str, str] = {}
     for line in meta_lines:
-        if ':' in line:
-            key, value = line.split(':', 1)
-            meta_dict[key.strip()] = value.strip()
-    
-    id = meta_dict.get('id')
-    display_name = meta_dict.get('display_name')
+        m = re.match(r"^\s*([^:=]+)\s*[:=]\s*(.*)$", line)
+        if m:
+            key = m.group(1).strip()
+            value = m.group(2).strip()
+            meta_dict[key] = value
+
+    pid = meta_dict.get('id')
+    display_name = meta_dict.get('display_name') or meta_dict.get('display-name')
     emoji = meta_dict.get('emoji', '')
     description = meta_dict.get('description', '')
-    
-    # Parse style
-    style = {}
-    style_lines = style_text.split('\n')
-    for line in style_lines:
-        if ':' in line:
-            key, value = line.split(':', 1)
-            style[key.strip()] = value.strip()
-    
-    if id and display_name and system_prompt:
-        return Persona(id=id, display_name=display_name, emoji=emoji, description=description, system_prompt=system_prompt, style=style)
+
+    # Parse style using YAML if available for richer structure
+    style: Dict[str, Any] = {}
+    if style_text:
+        try:
+            import yaml
+            parsed = yaml.safe_load(style_text)
+            if isinstance(parsed, dict):
+                style = parsed
+        except Exception:
+            # Fallback: simple key:value lines
+            style_lines = [l for l in style_text.split('\n') if l.strip()]
+            for line in style_lines:
+                m = re.match(r"^\s*([^:]+):\s*(.*)$", line)
+                if m:
+                    style[m.group(1).strip()] = m.group(2).strip()
+
+    # If id missing, fall back to filename-derived id
+    if not pid and source_filename:
+        pid = source_filename.lower().replace(' ', '_')
+
+    if pid and display_name and system_prompt:
+        return Persona(id=pid, display_name=display_name, emoji=emoji, description=description, system_prompt=system_prompt, style=style)
+    logging.debug("Persona file missing required fields: id/display_name/system_prompt")
     return None
 
 def get_persona(persona_id: str, personas: Dict[str, Persona]) -> Persona | None:

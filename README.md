@@ -22,18 +22,18 @@ Example persona file:
 
 ```markdown
 [meta]
-id=default
-display_name=Default Assistant
-emoji=🤖
-description=A neutral, helpful assistant focused on accuracy and clarity.
+id: default
+display_name: Default Assistant
+emoji: 🤖
+description: A neutral, helpful assistant focused on accuracy and clarity.
 
 [system_prompt]
 You are a helpful and neutral assistant. Respond based on the provided context, focusing on accuracy and clarity. Avoid unnecessary enthusiasm or technical jargon unless relevant.
 
 [style]
-tone=neutral, professional
-emoji_usage=minimal
-formatting=standard paragraphs
+tone: neutral, professional
+emoji_usage: minimal
+formatting: standard paragraphs
 ```
 
 The UI includes a dropdown to switch between available personas in real-time. The default persona is set via DEFAULT_PERSONA_ID environment variable (default: "default").
@@ -42,6 +42,37 @@ To add a custom persona:
 1. Create a new .md file in the personas directory
 2. Follow the structure above
 3. Restart the app to load the new persona
+
+Notes on persona authoring
+- Supported meta syntaxes: both `key: value` and `key = value` are accepted for the `[meta]` section (e.g. `id: default` or `id = default`).
+- The `[style]` section supports simple `key: value` lines and, when PyYAML is available, richer YAML-style structures (lists, nested maps).
+- Persona files must include at least `display_name` and a `[system_prompt]` section. If `id` is omitted, the filename stem will be used as the persona id.
+- Adding or editing persona files requires restarting the app for changes to be picked up.
+
+Example minimal persona (YAML-friendly style block):
+
+```markdown
+[meta]
+id: friendly
+display_name: Friendly Assistant
+emoji: 🙂
+
+[system_prompt]
+You are a friendly assistant. Keep explanations simple and warm.
+
+[style]
+tone: friendly
+emoji_usage: light
+formatting:
+	- Use short paragraphs
+	- Use bullet lists for steps
+```
+
+Configuration
+- `PERSONAS_DIR`: Path to persona files (default: `src/tinychatbot/personas/`).
+- `DEFAULT_PERSONA_ID`: Default persona id used at startup (default: `default`).
+
+When the app starts it will print the loaded personas to the console (id → display label). If the personas directory is empty or missing the app will continue running but without persona styles applied.
 
 Checklist / Native binaries
 - Python requirements (install into a venv): `pip install -r requirements.txt`

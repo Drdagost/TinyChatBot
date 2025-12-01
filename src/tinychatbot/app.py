@@ -158,7 +158,13 @@ class ContentAgent:
             "",
         ]
 
-        # Add persona instructions
+        # Guardrail: persona instructions should NOT override the SME constraints above.
+        # This explicit line helps prevent persona authors from accidentally weakening
+        # the requirement to answer only from provided documents.
+        prompt_lines.append("IMPORTANT: Persona instructions only affect tone and style. They must NOT change your requirement to answer ONLY from the provided documents or to avoid guessing.")
+        prompt_lines.append("")
+
+        # Add persona instructions (style/tone)
         persona = self.persona_store.get(self.persona_id)
         if persona:
             prompt_lines.append("Persona instructions:")
@@ -235,17 +241,42 @@ def main():
     default_persona_id = Config.DEFAULT_PERSONA_ID
     agent = ContentAgent(content_dir=Config.CONTENT_DIR, persona_store=persona_store, default_persona_id=default_persona_id)
     
-    # Persona options for dropdown
-    persona_options = {p.id: f"{p.display_name} {p.emoji}" for p in persona_store.values()}
-    
-    def chat_with_persona(msg, hist, persona_id):
-        agent.set_persona(persona_id)
+    # Persona options for dropdown (show friendly labels, return persona id via mapping)
+    # persona_label_map: id -> "DisplayName emoji"
+    persona_label_map = {p.id: f"{p.display_name} {p.emoji}" for p in persona_store.values()}
+    # reverse map: label -> id (used when dropdown returns the label)
+    label_to_id = {label: pid for pid, label in persona_label_map.items()}
+    persona_label_choices = list(label_to_id.keys())
+
+
+    # Log loaded personas for operator visibility
+    if persona_label_map:
+        logger.info(f"Loaded personas: {persona_label_map}")
+        print("Loaded personas:")
+        for pid, label in persona_label_map.items():
+            print(f" - {pid}: {label}")
+    else:
+        logger.warning("No personas found in PERSONAS_DIR; running without persona styles.")
+
+    def chat_with_persona(msg, hist, persona_label):
+        # Dropdown returns a label like "DisplayName emoji"; map it to the persona id.
+        persona_id = label_to_id.get(persona_label, default_persona_id)
+        try:
+            agent.set_persona(persona_id)
+        except Exception:
+            print(f"Requested persona '{persona_id}' not available; falling back to '{default_persona_id}'")
+            try:
+                agent.set_persona(default_persona_id)
+            except Exception:
+                pass
         return chat_with_citations(agent, msg, hist)
-    
+
     # Use wrapper so UI shows page/paragraph citations when available
+    # Present friendly labels in the dropdown but return the selected label; we map back to id.
+    default_label = persona_label_map.get(default_persona_id, None)
     gr.ChatInterface(
         fn=chat_with_persona,
-        additional_inputs=[gr.Dropdown(choices=persona_options, label="Persona", value=default_persona_id)]
+        additional_inputs=[gr.Dropdown(choices=persona_label_choices, label="Persona", value=default_label)]
     ).launch()
 
 
