@@ -1,6 +1,4 @@
-import os
 from docx import Document
-import tempfile
 
 from tinychatbot.io_utils import DocumentExtractor
 

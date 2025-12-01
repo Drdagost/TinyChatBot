@@ -8,7 +8,7 @@ import gradio as gr
 
 from . import qa_service as qs
 from .documents import load_documents
-from .personas import load_personas, list_personas, Persona
+from .personas import load_personas, Persona
 
 
 load_dotenv(override=True)

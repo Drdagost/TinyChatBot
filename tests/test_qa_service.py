@@ -1,7 +1,5 @@
-import types
 from types import SimpleNamespace
 
-import pytest
 
 from tinychatbot import qa_service as qs
 

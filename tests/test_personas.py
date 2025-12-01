@@ -1,4 +1,3 @@
-import os
 from tinychatbot.personas import parse_persona, load_personas
 
 
