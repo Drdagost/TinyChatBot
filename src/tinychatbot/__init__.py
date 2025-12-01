@@ -5,6 +5,7 @@ __all__ = [
     "config",
     "documents",
     "llm_client",
+    "personas",
     "qa_service",
     "vector_store",
 ]

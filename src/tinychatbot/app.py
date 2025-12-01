@@ -8,6 +8,7 @@ import gradio as gr
 
 from . import qa_service as qs
 from .documents import load_documents
+from .personas import load_personas, list_personas, Persona
 
 
 load_dotenv(override=True)
@@ -63,7 +64,7 @@ class ContentAgent:
     - System prompt instructs the model to act as an SME.
     """
 
-    def __init__(self, content_dir: str | None = None):
+    def __init__(self, content_dir: str | None = None, persona_store: dict[str, Persona] | None = None, default_persona_id: str = "default"):
         # Load environment variables early
         from dotenv import load_dotenv
         load_dotenv(override=True)
@@ -111,6 +112,9 @@ class ContentAgent:
                 sys.exit(1)
         # For faiss, chroma, memory, no additional keys needed
         
+        self.persona_store = persona_store or {}
+        self.persona_id = default_persona_id
+        
         # Import OpenAI client lazily so package import doesn't require API libs
         from openai import OpenAI
         self.openai = OpenAI()
@@ -120,6 +124,12 @@ class ContentAgent:
             raise FileNotFoundError(f"Content directory '{self.content_dir}' not found.")
 
         self.docs = self._load_documents(self.content_dir)
+
+    def set_persona(self, persona_id: str):
+        if persona_id in self.persona_store:
+            self.persona_id = persona_id
+        else:
+            raise ValueError(f"Persona {persona_id} not found")
 
     def _load_documents(self, folder_path: str) -> dict:
         """Walk the folder and extract text from known file types. Returns a dict[path] = text."""
@@ -145,9 +155,18 @@ class ContentAgent:
             "You are a helpful, accurate subject-matter expert. Answer user questions using ONLY the information contained in the provided documents.",
             "Do not impersonate any person. If the answer is not contained in the documents, say you don't know and offer to record the question.",
             "Be concise, factual, and cite which document (filename) you used when giving facts if appropriate.",
-            "The documents available are listed below (filename followed by an excerpt):",
             "",
         ]
+
+        # Add persona instructions
+        persona = self.persona_store.get(self.persona_id)
+        if persona:
+            prompt_lines.append("Persona instructions:")
+            prompt_lines.append(persona.system_prompt)
+            prompt_lines.append("")
+
+        prompt_lines.append("The documents available are listed below (filename followed by an excerpt):")
+        prompt_lines.append("")
 
         for path, text in self.docs.items():
             # increase preview window so multi-page documents are more likely to be included
@@ -211,9 +230,23 @@ def main():
     """Entrypoint for running the app. This allows tools like `uv run app` to import
     the `app` module and call `main()`.
     """
-    agent = ContentAgent()
+    from .config import Config
+    persona_store = load_personas(Config.PERSONAS_DIR)
+    default_persona_id = Config.DEFAULT_PERSONA_ID
+    agent = ContentAgent(content_dir=Config.CONTENT_DIR, persona_store=persona_store, default_persona_id=default_persona_id)
+    
+    # Persona options for dropdown
+    persona_options = {p.id: f"{p.display_name} {p.emoji}" for p in persona_store.values()}
+    
+    def chat_with_persona(msg, hist, persona_id):
+        agent.set_persona(persona_id)
+        return chat_with_citations(agent, msg, hist)
+    
     # Use wrapper so UI shows page/paragraph citations when available
-    gr.ChatInterface(lambda msg, hist: chat_with_citations(agent, msg, hist)).launch()
+    gr.ChatInterface(
+        fn=chat_with_persona,
+        additional_inputs=[gr.Dropdown(choices=persona_options, label="Persona", value=default_persona_id)]
+    ).launch()
 
 
 if __name__ == "__main__":

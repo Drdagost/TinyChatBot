@@ -29,3 +29,6 @@ class Config:
     CHUNK_SIZE_TOKENS = int(os.getenv("CHUNK_SIZE", "1000"))
     CHUNK_OVERLAP_TOKENS = int(os.getenv("CHUNK_OVERLAP", "200"))
 
+    PERSONAS_DIR = os.getenv("PERSONAS_DIR", "src/tinychatbot/personas")
+    DEFAULT_PERSONA_ID = os.getenv("DEFAULT_PERSONA_ID", "default")
+

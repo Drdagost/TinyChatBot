@@ -59,6 +59,8 @@ def test_content_agent_init_missing_api_key(monkeypatch):
 
 def test_system_prompt():
     """Test system prompt generation."""
+    from tinychatbot.personas import Persona
+    
     agent = ContentAgent.__new__(ContentAgent)  # Create instance without __init__
     agent.docs = {
         'content/doc1.txt': 'Content of document 1.',
@@ -66,12 +68,25 @@ def test_system_prompt():
     }
     agent.content_dir = 'content'
     
+    # Mock persona store
+    mock_persona = Persona(
+        id='default',
+        display_name='Default Assistant',
+        emoji='🤖',
+        description='Standard assistant behavior',
+        system_prompt='You are a helpful assistant.',
+        style={}
+    )
+    agent.persona_store = {'default': mock_persona}
+    agent.persona_id = 'default'
+    
     prompt = agent.system_prompt()
     
     assert "subject-matter expert" in prompt
     assert "doc1.txt" in prompt
     assert "doc2.txt" in prompt
     assert "Content of document 1." in prompt
+    assert "You are a helpful assistant." in prompt
 
 
 def test_handle_tool_call():
