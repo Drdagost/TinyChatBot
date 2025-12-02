@@ -40,6 +40,8 @@ def load_personas(personas_dir: str | Path) -> Dict[str, Persona]:
                     )
                 else:
                     personas[persona.id] = persona
+            else:
+                logging.warning(f"Failed to parse persona from {md_file}; skipping.")
         except Exception as e:
             logging.exception(f"Error loading persona {md_file}: {e}")
     return personas
@@ -93,6 +95,9 @@ def parse_persona(content: str, source_filename: str | None = None) -> Persona |
                 style = parsed
         except Exception:
             # Fallback: simple key:value lines
+            logging.debug(
+                f"YAML parsing failed for style in persona {source_filename or 'unknown'}; falling back to simple parser."
+            )
             style_lines = [line for line in style_text.split("\n") if line.strip()]
             for line in style_lines:
                 m = re.match(r"^\s*([^:]+):\s*(.*)$", line)

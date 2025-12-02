@@ -48,14 +48,6 @@ jobs:
         run: |
           pre-commit run --all-files || (git --no-pager diff --name-only && echo "Pre-commit failed: run 'pre-commit run --all-files' locally to fix formatting" && exit 1)
 
-      - name: Lint (ruff)
-        run: |
-          ruff check .
-
-      - name: Format check (black)
-        run: |
-          black --check .
-
       - name: Type check (mypy)
         run: |
           mypy src --ignore-missing-imports || true

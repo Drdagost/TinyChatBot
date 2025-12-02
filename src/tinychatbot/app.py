@@ -348,27 +348,35 @@ def main():
         persona_id = label_to_id.get(persona_label, default_persona_id)
         try:
             agent.set_persona(persona_id)
-        except Exception:
-            print(
-                f"Requested persona '{persona_id}' not available; falling back to '{default_persona_id}'"
+        except ValueError as e:
+            logger.error(
+                f"Failed to set persona '{persona_id}': {e}; falling back to '{default_persona_id}'"
             )
             try:
                 agent.set_persona(default_persona_id)
-            except Exception:
-                pass
+            except ValueError as e2:
+                logger.error(
+                    f"Failed to set default persona '{default_persona_id}': {e2}; proceeding without persona change"
+                )
         return chat_with_citations(agent, msg, hist)
 
     # Use wrapper so UI shows page/paragraph citations when available
     # Present friendly labels in the dropdown but return the selected label; we map back to id.
     default_label = persona_label_map.get(default_persona_id, None)
-    gr.ChatInterface(
-        fn=chat_with_persona,
-        additional_inputs=[
-            gr.Dropdown(
-                choices=persona_label_choices, label="Persona", value=default_label
-            )
-        ],
-    ).launch()
+    if persona_label_choices:
+        gr.ChatInterface(
+            fn=chat_with_persona,
+            additional_inputs=[
+                gr.Dropdown(
+                    choices=persona_label_choices, label="Persona", value=default_label
+                )
+            ],
+        ).launch()
+    else:
+        # No personas, run without dropdown
+        gr.ChatInterface(
+            fn=lambda msg, hist: chat_with_citations(agent, msg, hist)
+        ).launch()
 
 
 if __name__ == "__main__":

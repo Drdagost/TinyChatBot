@@ -122,3 +122,27 @@ def test_load_personas_skips_duplicates(tmp_path, caplog):
     assert len([p for p in personas.keys() if p == "dup"]) == 1
     # Should log a warning about duplicate
     assert any("Duplicate persona id" in rec.message for rec in caplog.records)
+
+
+def test_load_personas_missing_directory():
+    personas = load_personas("/nonexistent/directory")
+    assert personas == {}
+
+
+def test_load_personas_invalid_files(tmp_path, caplog):
+    # create a valid file and an invalid one
+    valid_content = make_md("id: valid\ndisplay_name: Valid", "Valid prompt")
+    invalid_content = "This is not a persona file"
+
+    valid_file = tmp_path / "valid.md"
+    invalid_file = tmp_path / "invalid.md"
+    valid_file.write_text(valid_content, encoding="utf-8")
+    invalid_file.write_text(invalid_content, encoding="utf-8")
+
+    caplog.clear()
+    personas = load_personas(str(tmp_path))
+    # Only the valid one should be loaded
+    assert "valid" in personas
+    assert len(personas) == 1
+    # Should log error for invalid file
+    assert any("Failed to parse" in rec.message for rec in caplog.records)
