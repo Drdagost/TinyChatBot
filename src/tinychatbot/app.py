@@ -170,7 +170,9 @@ class ContentAgent:
             self.persona_id = persona_id
         else:
             available = list(self.persona_store.keys())
-            raise ValueError(f"Persona '{persona_id}' not found. Available personas: {available}")
+            raise ValueError(
+                f"Persona '{persona_id}' not found. Available personas: {available}"
+            )
 
     def _load_documents(self, folder_path: str) -> dict:
         """Walk the folder and extract text from known file types. Returns a dict[path] = text."""
@@ -365,7 +367,9 @@ def main():
     # Present friendly labels in the dropdown but return the selected label; we map back to id.
     default_label = persona_label_map.get(default_persona_id, None)
     if default_label is None and persona_store:
-        logger.warning(f"Default persona '{default_persona_id}' not found in loaded personas; dropdown will have no default selection.")
+        logger.warning(
+            f"Default persona '{default_persona_id}' not found in loaded personas; dropdown will have no default selection."
+        )
     if persona_label_choices:
         gr.ChatInterface(
             fn=chat_with_persona,

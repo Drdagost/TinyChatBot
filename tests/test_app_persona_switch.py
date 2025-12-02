@@ -39,7 +39,9 @@ def test_set_persona_valid_and_invalid(tmp_path):
     assert "Be concise." in sp
 
     # invalid persona should raise
-    with pytest.raises(ValueError, match=r"Persona 'no-such' not found\. Available personas: \['p1'\]"):
+    with pytest.raises(
+        ValueError, match=r"Persona 'no-such' not found\. Available personas: \['p1'\]"
+    ):
         agent.set_persona("no-such")
 
 
