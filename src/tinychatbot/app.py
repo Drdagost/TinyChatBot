@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from typing import Any, Optional, Type
 
 import gradio as gr
@@ -86,58 +85,50 @@ class ContentAgent:
         # Check required keys based on LLM provider
         if llm_provider == "openai":
             if not os.getenv("OPENAI_API_KEY"):
-                print(
-                    "Error: OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file."
+                raise RuntimeError(
+                    "OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "azure":
             if not os.getenv("OPENAI_API_KEY") or not os.getenv(
                 "AZURE_OPENAI_DEPLOYMENT"
             ):
-                print(
-                    "Error: OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file."
+                raise RuntimeError(
+                    "OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "huggingface":
             if not os.getenv("HUGGINGFACE_API_KEY"):
-                print(
-                    "Error: HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file."
+                raise RuntimeError(
+                    "HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "openrouter":
             if not os.getenv("OPENROUTER_API_KEY"):
-                print(
-                    "Error: OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file."
+                raise RuntimeError(
+                    "OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "anthropic":
             if not os.getenv("ANTHROPIC_API_KEY"):
-                print(
-                    "Error: ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file."
+                raise RuntimeError(
+                    "ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "google":
             if not os.getenv("GOOGLE_API_KEY"):
-                print(
-                    "Error: GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file."
+                raise RuntimeError(
+                    "GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "deepseek":
             if not os.getenv("DEEPSEEK_API_KEY"):
-                print(
-                    "Error: DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file."
+                raise RuntimeError(
+                    "DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file."
                 )
-                sys.exit(1)
         elif llm_provider == "ollama":
             pass  # no key needed
 
         # Check required keys based on vector provider
         if vector_provider == "pinecone":
             if not os.getenv("PINECONE_API_KEY") or not os.getenv("PINECONE_ENV"):
-                print(
-                    "Error: PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file."
+                raise RuntimeError(
+                    "PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file."
                 )
-                sys.exit(1)
         # For faiss, chroma, memory, no additional keys needed
 
         self.persona_store: dict[str, Persona] = persona_store or {}
