@@ -4,4 +4,5 @@ class MissingConfigError(RuntimeError):
     This allows callers to catch configuration-related errors explicitly instead
     of the process exiting abruptly.
     """
+
     pass

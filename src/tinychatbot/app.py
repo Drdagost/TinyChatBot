@@ -10,8 +10,8 @@ from loguru import logger
 
 from . import qa_service as qs
 from .documents import load_documents
-from .personas import Persona, load_personas
 from .errors import MissingConfigError
+from .personas import Persona, load_personas
 
 load_dotenv(override=True)
 
