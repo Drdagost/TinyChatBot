@@ -1,3 +1,44 @@
+import os
+from unittest.mock import Mock
+
+from tinychatbot.personas import Persona
+from tinychatbot.app import ContentAgent
+
+
+def test_set_persona_valid_and_invalid(tmp_path):
+    # create a minimal content dir so ContentAgent init succeeds
+    content_dir = tmp_path / "content"
+    content_dir.mkdir()
+    (content_dir / "doc.txt").write_text("hello world")
+
+    persona = Persona(
+        id="p1",
+        display_name="P1",
+        emoji="🙂",
+        description="desc",
+        system_prompt="Be concise.",
+        style={"tone": "brief"},
+    )
+
+    personas = {"p1": persona}
+
+    fake_openai = Mock()
+    agent = ContentAgent(content_dir=str(content_dir), persona_store=personas, default_persona_id="p1", openai_client=fake_openai)
+
+    # valid set_persona
+    agent.set_persona("p1")
+    assert agent.persona_id == "p1"
+    # system prompt should include persona system prompt
+    sp = agent.system_prompt()
+    assert "Be concise." in sp
+
+    # invalid persona should raise
+    try:
+        agent.set_persona("no-such")
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
 import pytest
 
 from tinychatbot.app import ContentAgent

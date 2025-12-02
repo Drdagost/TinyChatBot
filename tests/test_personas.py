@@ -1,3 +1,53 @@
+from tinychatbot.personas import parse_persona
+
+
+def test_parse_persona_meta_colon_and_equal():
+    content = """
+[meta]
+id: test_persona
+display_name = Test Persona
+emoji: 🤖
+[system_prompt]
+You are a test persona.
+"""
+
+    p = parse_persona(content, source_filename="test_persona")
+    assert p is not None
+    assert p.id == "test_persona"
+    assert p.display_name == "Test Persona"
+    assert "You are a test persona." in p.system_prompt
+
+
+def test_parse_persona_missing_id_falls_back_to_filename():
+    content = """
+[meta]
+display_name: Filename Persona
+emoji: 🙂
+[system_prompt]
+Filename based persona prompt.
+"""
+    p = parse_persona(content, source_filename="filename_persona")
+    assert p is not None
+    assert p.id == "filename_persona"
+    assert p.display_name == "Filename Persona"
+
+
+def test_parse_persona_style_yaml_and_fallback():
+    # YAML style when yaml is available; if not, fallback parser handles key: value
+    content = """
+[meta]
+id: styled
+display_name: Styled Persona
+[system_prompt]
+Styled persona here.
+[style]
+politeness: high
+tone: friendly
+"""
+    p = parse_persona(content, source_filename="styled")
+    assert p is not None
+    assert p.style.get("politeness") == "high"
+    assert p.style.get("tone") == "friendly"
 from tinychatbot.personas import load_personas, parse_persona
 
 
