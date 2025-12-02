@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from tinychatbot.app import ContentAgent
+from tinychatbot.errors import MissingConfigError
 
 
 def test_content_agent_init_valid(monkeypatch):
@@ -55,10 +56,8 @@ def test_content_agent_init_missing_api_key(monkeypatch):
             "VECTOR_PROVIDER": "faiss",
             "CONTENT_DIR": "content",
         }.get(key, default)
-
-        with patch("sys.exit") as mock_exit:
+        with pytest.raises(MissingConfigError):
             ContentAgent(content_dir="content")
-            mock_exit.assert_called_once_with(1)
 
 
 def test_system_prompt():

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from typing import Any, Optional, Type
 
 import gradio as gr
@@ -10,6 +11,7 @@ from loguru import logger
 from . import qa_service as qs
 from .documents import load_documents
 from .personas import Persona, load_personas
+from .errors import MissingConfigError
 
 load_dotenv(override=True)
 
@@ -85,39 +87,39 @@ class ContentAgent:
         # Check required keys based on LLM provider
         if llm_provider == "openai":
             if not os.getenv("OPENAI_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file."
                 )
         elif llm_provider == "azure":
             if not os.getenv("OPENAI_API_KEY") or not os.getenv(
                 "AZURE_OPENAI_DEPLOYMENT"
             ):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "OPENAI_API_KEY and AZURE_OPENAI_DEPLOYMENT are required for LLM_PROVIDER=azure. Please set them in your .env file."
                 )
         elif llm_provider == "huggingface":
             if not os.getenv("HUGGINGFACE_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "HUGGINGFACE_API_KEY is required for LLM_PROVIDER=huggingface. Please set it in your .env file."
                 )
         elif llm_provider == "openrouter":
             if not os.getenv("OPENROUTER_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "OPENROUTER_API_KEY is required for LLM_PROVIDER=openrouter. Please set it in your .env file."
                 )
         elif llm_provider == "anthropic":
             if not os.getenv("ANTHROPIC_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "ANTHROPIC_API_KEY is required for LLM_PROVIDER=anthropic. Please set it in your .env file."
                 )
         elif llm_provider == "google":
             if not os.getenv("GOOGLE_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "GOOGLE_API_KEY is required for LLM_PROVIDER=google. Please set it in your .env file."
                 )
         elif llm_provider == "deepseek":
             if not os.getenv("DEEPSEEK_API_KEY"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "DEEPSEEK_API_KEY is required for LLM_PROVIDER=deepseek. Please set it in your .env file."
                 )
         elif llm_provider == "ollama":
@@ -126,7 +128,7 @@ class ContentAgent:
         # Check required keys based on vector provider
         if vector_provider == "pinecone":
             if not os.getenv("PINECONE_API_KEY") or not os.getenv("PINECONE_ENV"):
-                raise RuntimeError(
+                raise MissingConfigError(
                     "PINECONE_API_KEY and PINECONE_ENV are required for VECTOR_PROVIDER=pinecone. Please set them in your .env file."
                 )
         # For faiss, chroma, memory, no additional keys needed
@@ -311,11 +313,15 @@ def main():
 
     persona_store = load_personas(Config.PERSONAS_DIR)
     default_persona_id = Config.DEFAULT_PERSONA_ID
-    agent = ContentAgent(
-        content_dir=Config.CONTENT_DIR,
-        persona_store=persona_store,
-        default_persona_id=default_persona_id,
-    )
+    try:
+        agent = ContentAgent(
+            content_dir=Config.CONTENT_DIR,
+            persona_store=persona_store,
+            default_persona_id=default_persona_id,
+        )
+    except MissingConfigError as e:
+        print(str(e), file=sys.stderr)
+        sys.exit(1)
 
     # Persona options for dropdown (show friendly labels, return persona id via mapping)
     # persona_label_map: id -> "DisplayName emoji"
