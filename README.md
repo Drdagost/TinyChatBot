@@ -43,75 +43,175 @@ To add a custom persona:
 2. Follow the structure above
 3. Restart the app to load the new persona
 
-Notes on persona authoring
-- Supported meta syntaxes: both `key: value` and `key = value` are accepted for the `[meta]` section (e.g. `id: default` or `id = default`).
-- The `[style]` section supports simple `key: value` lines and, when PyYAML is available, richer YAML-style structures (lists, nested maps).
-- Persona files must include at least `display_name` and a `[system_prompt]` section. If `id` is omitted, the filename stem will be used as the persona id.
-- Adding or editing persona files requires restarting the app for changes to be picked up.
-
-Example minimal persona (YAML-friendly style block):
-
-```markdown
-[meta]
-id: friendly
-display_name: Friendly Assistant
-emoji: 🙂
-
-[system_prompt]
-You are a friendly assistant. Keep explanations simple and warm.
-
-[style]
-tone: friendly
-emoji_usage: light
-formatting:
-	- Use short paragraphs
-	- Use bullet lists for steps
-```
-
 Configuration
 - `PERSONAS_DIR`: Path to persona files (default: `src/tinychatbot/personas/`).
 - `DEFAULT_PERSONA_ID`: Default persona id used at startup (default: `default`).
 
 When the app starts it will print the loaded personas to the console (id → display label). If the personas directory is empty or missing the app will continue running but without persona styles applied.
 
-Checklist / Native binaries
-- Python requirements (install into a venv): `pip install -r requirements.txt`
-- Native binaries for OCR / PDF->image conversion (optional but recommended for scanned PDFs):
-  - Tesseract OCR (provides `tesseract` on PATH)
-  - Poppler utilities (provides `pdftoppm` used by `pdf2image`)
+For detailed authoring notes and additional examples, see `docs/personas.md`.
 
-Windows install (quick):
-1) Install Tesseract:
-	- Download the Tesseract installer (e.g. from https://github.com/tesseract-ocr/tesseract/releases). Choose the latest Windows executable.
-	- Run the installer and add the installation folder to your PATH (the installer often offers this option).
+## Embedding TinyChatBot in Your Website
 
-2) Install Poppler:
-	- Download a Windows build of Poppler (e.g. from https://github.com/oschwartz10612/poppler-windows/releases).
-	- Unzip and add the `bin/` folder to your PATH so `pdftoppm.exe` is accessible.
+TinyChatBot can be used as a standalone web app **or** embedded inside an existing site (e.g., a marketing or demo site) using an `<iframe>`.
 
-After installing these native binaries, restart your terminal/IDE. The app will print a clear warning at startup if either binary is missing and OCR will be skipped until both are available.
+This section explains how to:
 
-Run the app after creating a venv and installing dependencies:
+1. Run TinyChatBot as a web server.
+2. Embed it into another site.
 
-```powershell
+---
+
+### 1. Run TinyChatBot as a web server
+
+TinyChatBot exposes a Gradio-based UI from `tinychatbot.app`. You can run it locally or behind a reverse proxy (Nginx, Caddy, etc.) for production.
+
+#### Prerequisites
+
+- Python 3.11+
+- A virtual environment (recommended)
+- An LLM provider key (e.g., OpenAI)
+- Content loaded into a directory (e.g. `content/`)
+
+#### Setup
+
+From the project root:
+
+```bash
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+source .venv/bin/activate        # on Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+Configure environment variables (example):
+
+```bash
+export OPENAI_API_KEY="sk-..."           # required for OpenAI provider
+export CONTENT_DIR="content"             # folder with your docs
+export DEFAULT_PERSONA_ID="default"      # or cheerful_support / expert_architect / etc.
+export PORT=7860                         # optional; defaults to 7860
+```
+
+#### Start the app
+
+```bash
 python -m tinychatbot.app
 ```
 
-If you prefer a reproducible, lockfile-driven workflow we recommend using `uv` (uvenv).
-Once you've installed `uv` into your environment and created a lockfile, run the app with:
+By default, TinyChatBot will listen on:
 
-```powershell
-# with a Python venv active
-python -m pip install uv
-uv lock --upgrade   ;# creates/updates uv.lock from pyproject.toml
-uv run app          ;# runs the `app` script defined in pyproject.toml
+* `http://0.0.0.0:${PORT}` (e.g., `http://localhost:7860`)
+
+In production, you’ll typically:
+
+* Run this behind a reverse proxy (Nginx, etc.), and
+
+* Expose it via a friendly URL, e.g.:
+
+* `https://demo.yourcompany.com/tinychatbot`
+
+---
+
+### 2. Embedding TinyChatBot via `<iframe>`
+
+Once TinyChatBot is running at a stable URL, you can embed it into any web page using an `<iframe>`.
+
+In your website’s HTML:
+
+```html
+<section id="tinychatbot-demo">
+  <h2>Ask Our TinyChatBot</h2>
+  <p>
+    TinyChatBot is a domain expert over our documentation and content. Try asking a question!
+  </p>
+
+  <iframe
+    src="https://demo.yourcompany.com/tinychatbot"
+    style="
+      width: 100%;
+      max-width: 900px;
+      height: 600px;
+      border: none;
+      border-radius: 12px;
+      overflow: hidden;
+    "
+    title="TinyChatBot Demo"
+    loading="lazy"
+  ></iframe>
+</section>
 ```
 
-The project includes a `[project.scripts]` entry so `uv run app` calls `tinychatbot.app:main`.
-The pip steps above are a valid fallback if you don't use `uv`.
+You can adjust `width`, `height`, and styling to match your site’s layout. The important part is the `src`, which should point at the TinyChatBot app you’re hosting.
+
+---
+
+### 3. Personas in the embedded demo
+
+Personas let TinyChatBot answer in different tones/styles over the same content.
+
+* Persona definitions live in `src/tinychatbot/personas/` as Markdown files.
+* The default persona is set via the `DEFAULT_PERSONA_ID` environment variable.
+* The UI provides a dropdown for switching personas at runtime.
+
+For example, to start TinyChatBot with the **Cheerful Support** persona by default:
+
+```bash
+export DEFAULT_PERSONA_ID="cheerful_support"
+python -m tinychatbot.app
+```
+
+Users can still switch personas in the embedded UI; the embedding site doesn’t need to do anything special.
+
+---
+
+### 4. Notes on security and privacy
+
+* TinyChatBot uses your configured LLM provider (e.g., OpenAI) to answer questions.
+* Only content under `CONTENT_DIR` is used for answers; personas change tone/style, not which content is accessed.
+* If you enable `record_unknown_question()` (optional feature sending unknown questions to Pushover), ensure this behavior is acceptable for your environment and privacy policy.
+
+For a basic, safe demo setup:
+
+* Keep `CONTENT_DIR` to non-sensitive demo content.
+* Disable or carefully configure any external logging / Pushover notifications.
+
+## Development
+
+### Local Development Setup
+
+To set up TinyChatBot for local development:
+
+1. **Create and activate a virtual environment**:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1  # On Windows
+   # source .venv/bin/activate  # On macOS/Linux
+   ```
+
+2. **Install dependencies**:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+3. **Set required environment variables** (see Embedding section for details):
+   - `OPENAI_API_KEY` (or your LLM provider key)
+   - `CONTENT_DIR` (e.g., "content")
+
+4. **Run the app**:
+   ```powershell
+   python -m tinychatbot.app
+   ```
+
+For a reproducible workflow, use `uv`:
+```powershell
+python -m pip install uv
+uv lock --upgrade
+uv run app
+```
+
+**Optional: Native binaries for PDF/OCR support**
+- Install Tesseract OCR and Poppler for handling scanned PDFs.
+- On Windows: Download from their releases and add to PATH.
 
 ### Smoke test loader
 
