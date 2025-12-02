@@ -85,12 +85,12 @@ class ContentAgent:
         ).lower()
 
         # Check required keys based on LLM provider
-        if llm_provider == "openai":
+        if llm_provider == "openai" and openai_client is None:
             if not os.getenv("OPENAI_API_KEY"):
                 raise MissingConfigError(
                     "OPENAI_API_KEY is required for LLM_PROVIDER=openai. Please set it in your .env file."
                 )
-        elif llm_provider == "azure":
+        elif llm_provider == "azure" and openai_client is None:
             if not os.getenv("OPENAI_API_KEY") or not os.getenv(
                 "AZURE_OPENAI_DEPLOYMENT"
             ):
