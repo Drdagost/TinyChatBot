@@ -9,8 +9,8 @@ def test_chunk_with_metadata_basic():
     chunks = qs.chunk_with_metadata(text, path, chunk_size_tokens=50, overlap_tokens=10)
 
     # Expect at least one chunk for page1 and page2
-    pages = {m['page'] for _, m in chunks}
-    paras = {m['para'] for _, m in chunks}
+    pages = {m["page"] for _, m in chunks}
+    paras = {m["para"] for _, m in chunks}
 
     assert 1 in pages
     assert 2 in pages
@@ -20,8 +20,8 @@ def test_chunk_with_metadata_basic():
 def test_qa_includes_metadata(monkeypatch):
     # Mock read_documents to return one multi-page document
     text = "PageOne-Intro\n\nPageOne-Body\fPageTwo-Intro\n\nPageTwo-Body"
-    docs = [{'path': '/tmp/doc.txt', 'text': text}]
-    monkeypatch.setattr(qs, 'read_documents', lambda content_dir: docs)
+    docs = [{"path": "/tmp/doc.txt", "text": text}]
+    monkeypatch.setattr(qs, "read_documents", lambda content_dir: docs)
 
     # Fake VectorStore that will store metadata and return it on query
     class FakeVStore:
@@ -29,7 +29,9 @@ def test_qa_includes_metadata(monkeypatch):
             self._vectors = []
 
         def upsert(self, id, embedding, metadata):
-            self._vectors.append({'id': id, 'embedding': embedding, 'metadata': metadata})
+            self._vectors.append(
+                {"id": id, "embedding": embedding, "metadata": metadata}
+            )
 
         def clear(self):
             self._vectors = []
@@ -47,20 +49,25 @@ def test_qa_includes_metadata(monkeypatch):
 
         def chat(self, messages, **kwargs):
             from types import SimpleNamespace
-            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Mocked answer'))])
+
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(message=SimpleNamespace(content="Mocked answer"))
+                ]
+            )
 
     fake_l = FakeLLM()
 
-    monkeypatch.setattr(qs, 'get_services', lambda: (fake_v, fake_l))
+    monkeypatch.setattr(qs, "get_services", lambda: (fake_v, fake_l))
 
-    req = qs.QARequest(question='What is on page two?', top_k=2)
+    req = qs.QARequest(question="What is on page two?", top_k=2)
     resp = qs.qa(req)
 
     assert isinstance(resp, dict)
-    assert resp['answer'] == 'Mocked answer'
+    assert resp["answer"] == "Mocked answer"
     # sources should be a list of metadata dicts
-    assert isinstance(resp['sources'], list)
-    assert len(resp['sources']) > 0
-    first = resp['sources'][0]
-    assert 'source' in first
-    assert 'page' in first or 'snippet' in first
+    assert isinstance(resp["sources"], list)
+    assert len(resp["sources"]) > 0
+    first = resp["sources"][0]
+    assert "source" in first
+    assert "page" in first or "snippet" in first

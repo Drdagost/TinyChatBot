@@ -1,15 +1,12 @@
-import types
 from types import SimpleNamespace
-
-import pytest
 
 from tinychatbot import qa_service as qs
 
 
 def test_qa_logic_with_mocks(monkeypatch):
     # Mock read_documents to return one document
-    docs = [{'path': '/tmp/doc.txt', 'text': 'This is a document used for testing.'}]
-    monkeypatch.setattr(qs, 'read_documents', lambda content_dir: docs)
+    docs = [{"path": "/tmp/doc.txt", "text": "This is a document used for testing."}]
+    monkeypatch.setattr(qs, "read_documents", lambda content_dir: docs)
 
     # Fake VectorStore with upsert and query
     class FakeVStore:
@@ -21,7 +18,14 @@ def test_qa_logic_with_mocks(monkeypatch):
 
         def query(self, embedding, top_k=5):
             # return metadata-like structure expected by qa_service
-            return [{'metadata': {'snippet': docs[0]['text'][:300], 'source': docs[0]['path']}}]
+            return [
+                {
+                    "metadata": {
+                        "snippet": docs[0]["text"][:300],
+                        "source": docs[0]["path"],
+                    }
+                }
+            ]
 
     fake_v = FakeVStore()
 
@@ -33,18 +37,22 @@ def test_qa_logic_with_mocks(monkeypatch):
 
         def chat(self, messages, **kwargs):
             # mimic OpenAI-like response object with nested attributes
-            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Mocked answer'))])
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(message=SimpleNamespace(content="Mocked answer"))
+                ]
+            )
 
     fake_l = FakeLLM()
 
     # Patch get_services to return our fakes
-    monkeypatch.setattr(qs, 'get_services', lambda: (fake_v, fake_l))
+    monkeypatch.setattr(qs, "get_services", lambda: (fake_v, fake_l))
 
     # Build request and call the endpoint function directly
-    req = qs.QARequest(question='What is in the document?', top_k=1)
+    req = qs.QARequest(question="What is in the document?", top_k=1)
     resp = qs.qa(req)
 
     assert isinstance(resp, dict)
-    assert resp['answer'] == 'Mocked answer'
+    assert resp["answer"] == "Mocked answer"
     # sources now contain metadata dicts; assert the path appears in one of them
-    assert any(s.get('source') == '/tmp/doc.txt' for s in resp['sources'])
+    assert any(s.get("source") == "/tmp/doc.txt" for s in resp["sources"])
