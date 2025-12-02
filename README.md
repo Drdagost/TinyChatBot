@@ -177,6 +177,42 @@ For a basic, safe demo setup:
 
 ## Development
 
+### Local Development Setup
+
+To set up TinyChatBot for local development:
+
+1. **Create and activate a virtual environment**:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1  # On Windows
+   # source .venv/bin/activate  # On macOS/Linux
+   ```
+
+2. **Install dependencies**:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+3. **Set required environment variables** (see Embedding section for details):
+   - `OPENAI_API_KEY` (or your LLM provider key)
+   - `CONTENT_DIR` (e.g., "content")
+
+4. **Run the app**:
+   ```powershell
+   python -m tinychatbot.app
+   ```
+
+For a reproducible workflow, use `uv`:
+```powershell
+python -m pip install uv
+uv lock --upgrade
+uv run app
+```
+
+**Optional: Native binaries for PDF/OCR support**
+- Install Tesseract OCR and Poppler for handling scanned PDFs.
+- On Windows: Download from their releases and add to PATH.
+
 ### Smoke test loader
 
 For a quick sanity check on your content directory, run:
