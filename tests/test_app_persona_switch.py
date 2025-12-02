@@ -1,8 +1,9 @@
-import os
 from unittest.mock import Mock
 
-from tinychatbot.personas import Persona
+import pytest
+
 from tinychatbot.app import ContentAgent
+from tinychatbot.personas import Persona
 
 
 def test_set_persona_valid_and_invalid(tmp_path):
@@ -23,7 +24,12 @@ def test_set_persona_valid_and_invalid(tmp_path):
     personas = {"p1": persona}
 
     fake_openai = Mock()
-    agent = ContentAgent(content_dir=str(content_dir), persona_store=personas, default_persona_id="p1", openai_client=fake_openai)
+    agent = ContentAgent(
+        content_dir=str(content_dir),
+        persona_store=personas,
+        default_persona_id="p1",
+        openai_client=fake_openai,
+    )
 
     # valid set_persona
     agent.set_persona("p1")
@@ -33,39 +39,8 @@ def test_set_persona_valid_and_invalid(tmp_path):
     assert "Be concise." in sp
 
     # invalid persona should raise
-    try:
-        agent.set_persona("no-such")
-        raised = False
-    except ValueError:
-        raised = True
-    assert raised
-import pytest
-
-from tinychatbot.app import ContentAgent
-from tinychatbot.personas import Persona
-
-
-def test_set_persona_valid_and_invalid():
-    agent = ContentAgent.__new__(ContentAgent)
-    # prepare minimal attributes used by set_persona
-    mock_persona = Persona(
-        id="default",
-        display_name="Default",
-        emoji="🤖",
-        description="desc",
-        system_prompt="You are default.",
-        style={},
-    )
-    agent.persona_store = {"default": mock_persona}
-    agent.persona_id = "default"
-
-    # valid set
-    agent.set_persona("default")
-    assert agent.persona_id == "default"
-
-    # invalid set should raise ValueError
     with pytest.raises(ValueError):
-        agent.set_persona("nonexistent")
+        agent.set_persona("no-such")
 
 
 def test_system_prompt_contains_guardrail_and_persona():

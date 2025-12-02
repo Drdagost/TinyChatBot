@@ -1,4 +1,17 @@
-from tinychatbot.personas import parse_persona
+from tinychatbot.personas import load_personas, parse_persona
+
+
+def make_md(meta: str, system_prompt: str, style: str = "") -> str:
+    return f"""
+[meta]
+{meta}
+
+[system_prompt]
+{system_prompt}
+
+[style]
+{style}
+"""
 
 
 def test_parse_persona_meta_colon_and_equal():
@@ -48,20 +61,6 @@ tone: friendly
     assert p is not None
     assert p.style.get("politeness") == "high"
     assert p.style.get("tone") == "friendly"
-from tinychatbot.personas import load_personas, parse_persona
-
-
-def make_md(meta: str, system_prompt: str, style: str = "") -> str:
-    return f"""
-[meta]
-{meta}
-
-[system_prompt]
-{system_prompt}
-
-[style]
-{style}
-"""
 
 
 def test_meta_parsing_colon_and_equal():
